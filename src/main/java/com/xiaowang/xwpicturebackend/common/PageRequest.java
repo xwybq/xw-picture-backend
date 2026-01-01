@@ -2,8 +2,13 @@ package com.xiaowang.xwpicturebackend.common;
 
 import lombok.Data;
 
+import java.io.Serializable;
+
+/**
+ * 分页请求
+ */
 @Data
-public class PageRequst {
+public class PageRequest implements Serializable {
     /**
      * 当前页号
      */
@@ -20,4 +25,8 @@ public class PageRequst {
      * 排序顺序（默认升序）
      */
     private String sortOrder = "descend";
+    /**
+     * 序列化版本号
+     */
+    private static final long serialVersionUID = 1L;
 }
