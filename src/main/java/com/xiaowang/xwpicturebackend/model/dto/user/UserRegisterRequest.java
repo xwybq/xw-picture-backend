@@ -1,4 +1,4 @@
-package com.xiaowang.xwpicturebackend.model.dto;
+package com.xiaowang.xwpicturebackend.model.dto.user;
 
 import lombok.Data;
 
@@ -13,6 +13,4 @@ public class UserRegisterRequest implements Serializable {
     private String userPassword;
     //校验密码
     private String checkPassword;
-
-
 }

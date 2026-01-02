@@ -1,20 +1,24 @@
-package com.xiaowang.xwpicturebackend.model.vo;
+package com.xiaowang.xwpicturebackend.model.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
-import lombok.Data;
+import com.baomidou.mybatisplus.annotation.*;
 
 import java.io.Serializable;
 import java.util.Date;
 
-@Data
-public class LoginUserVO implements Serializable {
+import lombok.Data;
 
-    private static final long serialVersionUID = -4312737365597738663L;
+/**
+ * 用户
+ *
+ * @TableName user
+ */
+@TableName(value = "user")
+@Data
+public class User implements Serializable {
     /**
      * id
      */
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -22,6 +26,10 @@ public class LoginUserVO implements Serializable {
      */
     private String userAccount;
 
+    /**
+     * 密码
+     */
+    private String userPassword;
 
     /**
      * 用户昵称
@@ -58,5 +66,14 @@ public class LoginUserVO implements Serializable {
      */
     private Date updateTime;
 
+    /**
+     * 是否删除
+     */
+    @TableLogic
+    private Integer isDelete;
+
+
+    @TableField(exist = false)
+    private static final long serialVersionUID = 1L;
 
 }

@@ -24,4 +24,14 @@ public class ThrowUtils {
     public static void throwIf(boolean condition, ErrorCode errorCode, String message) {
         throwIf(condition, new BusinessException(errorCode, message));
     }
+
+    /**
+     * 业务异常
+     *
+     * @param condition 条件
+     * @param errorCode 错误码
+     */
+    public static void throwIf(boolean condition, ErrorCode errorCode) {
+        throwIf(condition, errorCode, errorCode.getMessage());
+    }
 }
