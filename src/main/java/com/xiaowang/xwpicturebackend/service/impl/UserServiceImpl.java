@@ -64,6 +64,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         //2、检查用户是否已存在
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userAccount", userAccount);
+        queryWrapper.eq("isDelete", 0);
         long count = this.baseMapper.selectCount(queryWrapper);
         if (count > 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号已存在");
@@ -76,6 +77,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         user.setUserPassword(encryptPassword);
         user.setUserName("无名");
         user.setUserRole(UserRoleEnum.USER.getValue());
+        user.setUserAvatar(UserConstant.DEFAULT_AVATAR);
+        user.setUserProfile(UserConstant.DEFAULT_PROFILE);
         boolean saveResult = this.save(user);
         if (!saveResult) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "用户注册失败");

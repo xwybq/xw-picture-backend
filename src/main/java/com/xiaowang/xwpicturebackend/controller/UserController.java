@@ -102,6 +102,14 @@ public class UserController {
         if (StrUtil.isBlank(userAddRequest.getUserName())) {
             user.setUserName(DEFAULT_USER_NAME);
         }
+        final String DEFAULT_USER_AVATAR = UserConstant.DEFAULT_AVATAR;
+        if (StrUtil.isBlank(userAddRequest.getUserAvatar())) {
+            user.setUserAvatar(DEFAULT_USER_AVATAR);
+        }
+        final String DEFAULT_USER_PROFILE = UserConstant.DEFAULT_PROFILE;
+        if (StrUtil.isBlank(userAddRequest.getUserProfile())) {
+            user.setUserProfile(DEFAULT_USER_PROFILE);
+        }
         boolean result = userService.save(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(user.getId());
