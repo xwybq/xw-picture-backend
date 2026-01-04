@@ -1,20 +1,36 @@
 package com.xiaowang.xwpicturebackend.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xiaowang.xwpicturebackend.common.BaseResponse;
+import com.xiaowang.xwpicturebackend.exception.BusinessException;
 import com.xiaowang.xwpicturebackend.exception.ErrorCode;
 import com.xiaowang.xwpicturebackend.exception.ThrowUtils;
 import com.xiaowang.xwpicturebackend.manager.FileManager;
 import com.xiaowang.xwpicturebackend.model.dto.file.UploadPictureResult;
+import com.xiaowang.xwpicturebackend.model.dto.picture.PictureQueryRequest;
 import com.xiaowang.xwpicturebackend.model.dto.picture.PictureUploadRequest;
+import com.xiaowang.xwpicturebackend.model.dto.user.UserQueryRequest;
 import com.xiaowang.xwpicturebackend.model.entity.Picture;
 import com.xiaowang.xwpicturebackend.model.entity.User;
 import com.xiaowang.xwpicturebackend.model.vo.PictureVO;
+import com.xiaowang.xwpicturebackend.model.vo.UserVO;
 import com.xiaowang.xwpicturebackend.service.PictureService;
 import com.xiaowang.xwpicturebackend.mapper.PictureMapper;
+import com.xiaowang.xwpicturebackend.service.UserService;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Date;
+import javax.servlet.http.HttpServletRequest;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author wangjialeNB
@@ -27,9 +43,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
 
     private final FileManager fileManager;
+    private final UserService userService;
 
-    public PictureServiceImpl(FileManager fileManager) {
+    public PictureServiceImpl(FileManager fileManager, UserService userService) {
         this.fileManager = fileManager;
+        this.userService = userService;
     }
 
     /**
@@ -77,6 +95,165 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         //返回VO
         return PictureVO.objToVo(picture);
     }
+
+
+    /**
+     * 校验图片是否合法（新增/更新时调用）
+     *
+     * @param picture 图片
+     */
+    public void validPicture(Picture picture) {
+        ThrowUtils.throwIf(picture == null, ErrorCode.PARAMS_ERROR, "图片不能为空");
+        Long id = picture.getId();
+        String url = picture.getUrl();
+        // 修改图片的时候，要做一个参数校验
+        String introduction = picture.getIntroduction();
+        ThrowUtils.throwIf(ObjectUtil.isNull(id), ErrorCode.PARAMS_ERROR, "图片id不能为空");
+        if (StrUtil.isNotBlank(url)) {
+            ThrowUtils.throwIf(url.length() > 1024, ErrorCode.PARAMS_ERROR, "图片url长度不能超过1024");
+        }
+        if (StrUtil.isNotBlank(introduction)) {
+            ThrowUtils.throwIf(introduction.length() > 1024, ErrorCode.PARAMS_ERROR, "图片介绍长度不能超过1024");
+        }
+    }
+
+
+    /**
+     * 获取图片VO
+     *
+     * @param picture 图片
+     * @param request 请求
+     * @return 图片VO
+     */
+    @Override
+    public PictureVO getPictureVO(Picture picture, HttpServletRequest request) {
+        PictureVO pictureVO = PictureVO.objToVo(picture);
+        Long userId = picture.getUserId();
+        if (userId != null && userId > 0) {
+            User user = userService.getById(userId);
+            UserVO userVO = userService.getUserVO(user);
+            pictureVO.setUser(userVO);
+        }
+        return pictureVO;
+    }
+
+    /**
+     * 转换Picture分页对象为PictureVO分页对象，并填充关联的用户信息
+     *
+     * @param picturePage Picture实体的分页对象，包含分页参数和Picture列表数据
+     * @param request     HTTP请求对象（预留扩展使用，如获取请求头/参数等）
+     * @return Page<PictureVO> 转换后的PictureVO分页对象，已填充完整的用户信息
+     */
+    @Override
+    public Page<PictureVO> getPictureVOPage(Page<Picture> picturePage, HttpServletRequest request) {
+        // 1. 获取Picture分页对象中的具体数据列表
+        List<Picture> pictureList = picturePage.getRecords();
+
+        // 2. 初始化PictureVO分页对象，复用原分页的当前页、每页条数、总记录数（保证分页参数一致性）
+        Page<PictureVO> pictureVOPage = new Page<>(picturePage.getCurrent(), picturePage.getSize(), picturePage.getTotal());
+
+        // 3. 空值校验：如果Picture列表为空，直接返回空的VO分页对象（避免后续空指针）
+        if (CollUtil.isEmpty(pictureList)) {
+            return pictureVOPage;
+        }
+
+        // 4. 将Picture实体列表转换为PictureVO列表（基础属性转换）
+        List<PictureVO> pictureVOList = pictureList.stream()
+                .map(PictureVO::objToVo)  // 调用PictureVO的静态方法完成单个对象属性映射
+                .collect(Collectors.toList());
+
+        // 5. 提取所有Picture关联的用户ID（去重），用于批量查询用户信息（减少数据库查询次数）
+        Set<Long> userIds = pictureList.stream()
+                .map(Picture::getUserId)
+                .collect(Collectors.toSet());
+
+        // 6. 批量查询用户信息，并按用户ID分组（key：用户ID，value：对应用户列表）
+        //    注：groupingBy保证同一个用户ID的用户数据聚合，此处取第一个是因为用户ID唯一
+        Map<Long, List<User>> userIdUserListMap = userService.listByIds(userIds).stream()
+                .collect(Collectors.groupingBy(User::getId));
+
+        // 7. 遍历PictureVO列表，为每个VO填充关联的用户VO信息
+        pictureVOList.forEach(pictureVO -> {
+            // 获取当前PictureVO关联的用户ID
+            Long userId = pictureVO.getUserId();
+            // 初始化用户对象（默认null，避免空指针）
+            User user = null;
+            // 如果用户ID在查询结果中存在，取第一个用户对象（用户ID唯一）
+            if (userIdUserListMap.containsKey(userId)) {
+                user = userIdUserListMap.get(userId).get(0);
+            }
+            // 将用户对象转换为UserVO并设置到PictureVO中
+            pictureVO.setUser(userService.getUserVO(user));
+        });
+
+        // 8. 将填充好用户信息的PictureVO列表设置到分页对象中
+        pictureVOPage.setRecords(pictureVOList);
+
+        // 9. 返回最终的PictureVO分页对象
+        return pictureVOPage;
+    }
+
+
+    /**
+     * 获取查询Wrapper
+     *
+     * @param pictureQueryRequest 图片查询请求
+     * @return 查询Wrapper
+     */
+    @Override
+    public QueryWrapper<Picture> getQueryWrapper(PictureQueryRequest pictureQueryRequest) {
+        if (pictureQueryRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "查询参数为空");
+        }
+
+        Long id = pictureQueryRequest.getId();
+        Long userId = pictureQueryRequest.getUserId();
+        String name = pictureQueryRequest.getName();
+        String introduction = pictureQueryRequest.getIntroduction();
+        String category = pictureQueryRequest.getCategory();
+        List<String> tags = pictureQueryRequest.getTags();
+        Long picSize = pictureQueryRequest.getPicSize();
+        Integer picHeight = pictureQueryRequest.getPicHeight();
+        Integer picWidth = pictureQueryRequest.getPicWidth();
+        Double picScale = pictureQueryRequest.getPicScale();
+        String picFormat = pictureQueryRequest.getPicFormat();
+        String searchText = pictureQueryRequest.getSearchText();
+        String sortField = pictureQueryRequest.getSortField();
+        String sortOrder = pictureQueryRequest.getSortOrder();
+
+        QueryWrapper<Picture> queryWrapper = new QueryWrapper<>();
+
+        //多字段查询
+        if (StrUtil.isNotBlank(searchText)) {
+            queryWrapper.and(qw -> qw.like("name", searchText)
+                    .or().like("introduction", searchText));
+//                    .or().like("category", searchText)
+//                    .or().like("tags", searchText));
+        }
+
+        queryWrapper.eq(ObjectUtil.isNotNull(id), "id", id);
+        queryWrapper.eq(ObjectUtil.isNotNull(userId), "userId", userId);
+        queryWrapper.like(StrUtil.isNotBlank(name), "name", name);
+        queryWrapper.like(StrUtil.isNotBlank(introduction), "introduction", introduction);
+        queryWrapper.eq(StrUtil.isNotBlank(category), "category", category);
+        queryWrapper.eq(ObjectUtil.isNotNull(picSize), "picSize", picSize);
+        queryWrapper.eq(ObjectUtil.isNotNull(picHeight), "picHeight", picHeight);
+        queryWrapper.eq(ObjectUtil.isNotNull(picWidth), "picWidth", picWidth);
+        queryWrapper.eq(ObjectUtil.isNotNull(picScale), "picScale", picScale);
+        queryWrapper.like(StrUtil.isNotBlank(picFormat), "picFormat", picFormat);
+
+        //Tag 标签查询
+        if (CollectionUtil.isNotEmpty(tags)) {
+            //and (tags like  "%\java\"%" and like "%\python\"%)
+            for (String tag : tags) {
+                queryWrapper.like("tags", "\"" + tag + "\"");
+            }
+        }
+        queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), StrUtil.equals(sortOrder, "ascend"), sortField);
+        return queryWrapper;
+    }
+
+
 }
 
 

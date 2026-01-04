@@ -40,7 +40,7 @@ create table if not exists picture
     name         varchar(128)                       null comment '图片名称',
     introduction varchar(512)                       null comment '图片介绍',
     category     varchar(64)                        null comment '图片分类',
-    tag          varchar(512)                       null comment '图片标签 (逗号分隔，格式为JSON数组)',
+    tags          varchar(512)                       null comment '图片标签 (逗号分隔，格式为JSON数组)',
     picSize      bigint                             null comment '图片大小 (字节)',
     picHeight    int                                null comment '图片高度',
     picWidth     int                                null comment '图片宽度',
@@ -53,6 +53,6 @@ create table if not exists picture
     INDEX idx_userId (userId),
     INDEX idx_name (name),
     INDEX idx_category (category),
-    INDEX idx_tag (tag),
+    INDEX idx_tags (tags),
     INDEX idx_introduction (introduction)
 ) comment '图片' collate = 'utf8mb4_unicode_ci';

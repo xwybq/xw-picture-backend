@@ -93,7 +93,18 @@ public interface UserService extends IService<User> {
      * @return 查询Wrapper
      */
     QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest);
+
+    /**
+     * 是否为管理员
+     *
+     * @param user
+     * @return 是否为管理员
+     */
+    boolean isAdmin(User user);
 }
+
+
+
 
 
 

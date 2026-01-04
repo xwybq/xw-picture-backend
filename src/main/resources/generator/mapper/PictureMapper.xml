@@ -11,7 +11,7 @@
             <result property="name" column="name" />
             <result property="introduction" column="introduction" />
             <result property="category" column="category" />
-            <result property="tag" column="tag" />
+            <result property="tags" column="tags" />
             <result property="picSize" column="picSize" />
             <result property="picHeight" column="picHeight" />
             <result property="picWidth" column="picWidth" />
@@ -25,7 +25,7 @@
 
     <sql id="Base_Column_List">
         id,userId,url,name,introduction,category,
-        tag,picSize,picHeight,picWidth,picScale,
+        tags,picSize,picHeight,picWidth,picScale,
         picFormat,editTime,createTime,updateTime,isDelete
     </sql>
 </mapper>

@@ -206,6 +206,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
+    public boolean isAdmin(User user) {
+        return user != null && UserRoleEnum.ADMIN.getValue().equals(user.getUserRole());
+    }
+
+    @Override
     public List<UserVO> getUserVOList(List<User> userList) {
         if (CollectionUtil.isEmpty(userList)) {
             return new ArrayList<>();

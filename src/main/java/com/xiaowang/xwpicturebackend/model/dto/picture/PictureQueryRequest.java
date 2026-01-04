@@ -1,38 +1,28 @@
-package com.xiaowang.xwpicturebackend.model.entity;
+package com.xiaowang.xwpicturebackend.model.dto.picture;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.xiaowang.xwpicturebackend.common.PageRequest;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 
-import lombok.Data;
 
-/**
- * 图片
- *
- * @TableName picture
- */
-@TableName(value = "picture")
 @Data
-public class Picture implements Serializable {
-    @TableField(exist = false)
-    private static final long serialVersionUID = 1112717306047708470L;
+@EqualsAndHashCode(callSuper = true)
+public class PictureQueryRequest extends PageRequest implements Serializable {
+    private static final long serialVersionUID = 4718741591046740693L;
     /**
      * id
      */
-    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
-    /**
-     * 创建用户id
-     */
-    private Long userId;
 
     /**
-     * 图片url
+     * 用户id
      */
-    private String url;
+    private Long userId;
 
     /**
      * 图片名称
@@ -52,7 +42,7 @@ public class Picture implements Serializable {
     /**
      * 图片标签 (逗号分隔，格式为JSON数组)
      */
-    private String tags;
+    private List<String> tags;
 
     /**
      * 图片大小 (字节)
@@ -79,26 +69,10 @@ public class Picture implements Serializable {
      */
     private String picFormat;
 
-    /**
-     * 编辑时间
-     */
-    private Date editTime;
 
     /**
-     * 创建时间
+     * 搜索文本
      */
-    private Date createTime;
-
-    /**
-     * 更新时间
-     */
-    private Date updateTime;
-
-    /**
-     * 是否删除
-     */
-    @TableLogic
-    private Integer isDelete;
-
+    private String searchText;
 
 }

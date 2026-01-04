@@ -49,7 +49,7 @@ public class PictureVO implements Serializable {
     /**
      * 图片标签 (逗号分隔，格式为JSON数组)
      */
-    private List<String> tag;
+    private List<String> tags;
 
     /**
      * 图片大小 (字节)
@@ -109,7 +109,7 @@ public class PictureVO implements Serializable {
         }
         Picture picture = new Picture();
         BeanUtil.copyProperties(pictureVO, picture);
-        picture.setTag(JSONUtil.toJsonStr(pictureVO.getTag())); // 将标签列表转换为JSON字符串
+        picture.setTags(JSONUtil.toJsonStr(pictureVO.getTags())); // 将标签列表转换为JSON字符串
         return picture;
     }
 
@@ -125,7 +125,7 @@ public class PictureVO implements Serializable {
         }
         PictureVO pictureVO = new PictureVO();
         BeanUtil.copyProperties(picture, pictureVO);
-        pictureVO.setTag(JSONUtil.toList(picture.getTag(), String.class)); // 将JSON字符串转换为标签列表
+        pictureVO.setTags(JSONUtil.toList(picture.getTags(), String.class)); // 将JSON字符串转换为标签列表
         return pictureVO;
     }
 
