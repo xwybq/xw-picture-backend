@@ -22,8 +22,14 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
+
+/**
+ * 文件管理类
+ * 已经废弃，使用upload包里面的类
+ */
 @Component
 @Slf4j
+@Deprecated
 public class FileManager {
     private final CosManager cosManager;
     private final CosClientConfig cosClientConfig;

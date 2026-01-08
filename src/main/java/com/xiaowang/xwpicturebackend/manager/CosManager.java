@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 
 @Component
-public class CosManager {
+public class CosManager  {
     private final COSClient cosClient;
     private final CosClientConfig clientConfig;
 

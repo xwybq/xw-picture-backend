@@ -3,6 +3,7 @@ package com.xiaowang.xwpicturebackend.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xiaowang.xwpicturebackend.model.dto.picture.PictureQueryRequest;
+import com.xiaowang.xwpicturebackend.model.dto.picture.PictureReviewRequest;
 import com.xiaowang.xwpicturebackend.model.dto.picture.PictureUploadRequest;
 import com.xiaowang.xwpicturebackend.model.dto.user.UserQueryRequest;
 import com.xiaowang.xwpicturebackend.model.entity.Picture;
@@ -25,12 +26,12 @@ public interface PictureService extends IService<Picture> {
     /**
      * 上传图片
      *
-     * @param multipartFile        图片文件
+     * @param inputSource        图片文件或URL
      * @param pictureUploadRequest 图片上传请求
      * @param loginUser            登录用户
      * @return 图片VO
      */
-    PictureVO uploadPicture(MultipartFile multipartFile, PictureUploadRequest pictureUploadRequest, User loginUser);
+    PictureVO uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser);
 
     /**
      * 校验图片是否合法（新增/更新时调用）
@@ -38,7 +39,6 @@ public interface PictureService extends IService<Picture> {
      * @param picture 图片
      */
     void validPicture(Picture picture);
-
 
 
     //图片的删改查
@@ -51,6 +51,7 @@ public interface PictureService extends IService<Picture> {
      * @return 图片VO
      */
     PictureVO getPictureVO(Picture picture, HttpServletRequest request);
+
     /**
      * 获取图片VO分页
      *
@@ -66,4 +67,22 @@ public interface PictureService extends IService<Picture> {
      * @return 查询Wrapper
      */
     QueryWrapper<Picture> getQueryWrapper(PictureQueryRequest pictureQueryRequest);
+
+
+    /**
+     * 审核图片
+     *
+     * @param pictureReviewRequest 图片审核请求
+     * @param loginUser            登录用户
+     */
+    void doPictureReview(PictureReviewRequest pictureReviewRequest, User loginUser);
+
+    /**
+     * 校验图片审核参数
+     *
+     * @param picture 图片
+     * @param loginUser 登录用户
+     */
+    void  fillReviewParams(Picture picture, User loginUser);
+
 }
