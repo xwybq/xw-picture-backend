@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -18,6 +19,7 @@ import com.xiaowang.xwpicturebackend.manager.upload.UrlPictureUpload;
 import com.xiaowang.xwpicturebackend.model.dto.file.UploadPictureResult;
 import com.xiaowang.xwpicturebackend.model.dto.picture.PictureQueryRequest;
 import com.xiaowang.xwpicturebackend.model.dto.picture.PictureReviewRequest;
+import com.xiaowang.xwpicturebackend.model.dto.picture.PictureUploadByBatchRequest;
 import com.xiaowang.xwpicturebackend.model.dto.picture.PictureUploadRequest;
 import com.xiaowang.xwpicturebackend.model.entity.Picture;
 import com.xiaowang.xwpicturebackend.model.entity.User;
@@ -27,10 +29,15 @@ import com.xiaowang.xwpicturebackend.model.vo.UserVO;
 import com.xiaowang.xwpicturebackend.service.PictureService;
 import com.xiaowang.xwpicturebackend.mapper.PictureMapper;
 import com.xiaowang.xwpicturebackend.service.UserService;
+import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -40,6 +47,7 @@ import java.util.stream.Collectors;
  * @createDate 2026-01-03 17:44:09
  */
 @Service
+@Slf4j
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         implements PictureService {
 
@@ -94,7 +102,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Picture picture = new Picture();
         picture.setUserId(loginUser.getId());
         picture.setUrl(uploadPictureResult.getUrl());
-        picture.setName(uploadPictureResult.getPicName());
+        String picName = uploadPictureResult.getPicName();
+        if (pictureUploadRequest != null && StrUtil.isNotBlank(pictureUploadRequest.getPicName())) {
+            picName = pictureUploadRequest.getPicName();
+        }
+        picture.setName(picName);
         picture.setPicSize(uploadPictureResult.getPicSize());
         picture.setPicHeight(uploadPictureResult.getPicHeight());
         picture.setPicWidth(uploadPictureResult.getPicWidth());
@@ -332,6 +344,81 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             // 普通用户不管做任何操作，都默认是待审核
             picture.setReviewStatus(PictureReviewStatusEnum.PENDING.getValue());
         }
+    }
+
+    /**
+     * 批量上传图片
+     *
+     * @param pictureUploadByBatchRequest 图片批量上传请求
+     * @param loginUser                   登录用户
+     * @return 上传成功图片数量
+     */
+    @Override
+    public Integer uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser) {
+        //1、校验参数
+        final Integer DEFAULT_MAX_COUNT = 30;
+        String searchText = pictureUploadByBatchRequest.getSearchText();
+        Integer count = pictureUploadByBatchRequest.getCount();
+        String namePrefix = pictureUploadByBatchRequest.getNamePrefix();
+        ThrowUtils.throwIf(StrUtil.isBlank(searchText), ErrorCode.PARAMS_ERROR, "搜索文本为空");
+        ThrowUtils.throwIf(count == null || count <= 0, ErrorCode.PARAMS_ERROR, "抓取数量错误");
+        ThrowUtils.throwIf(count.compareTo(DEFAULT_MAX_COUNT) > 0, ErrorCode.PARAMS_ERROR, "抓取数量不能超过30");
+        if (StrUtil.isBlank(namePrefix)) {
+            namePrefix = searchText;
+        }
+        //2、发送请求，抓取内容
+        final String DEFAULT_PICTURE_FETCH_URL = "https://cn.bing.com/images/async?q=%s&mmasync=1";
+        String fetchUrl = String.format(DEFAULT_PICTURE_FETCH_URL, searchText);
+        Document document;
+        try {
+            document = Jsoup.connect(fetchUrl).get();
+        } catch (IOException e) {
+            log.error(String.format("图片批量上传失败，搜索文本：%s，抓取数量：%d，异常信息：%s", searchText, count, e.getMessage()));
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, e.getMessage());
+        }
+        //3、处理响应
+        Element div = document.getElementsByClass("dgControl").first();
+        if (ObjectUtil.isEmpty(div)) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取元素失败");
+        }
+        Elements imgElementList = null;
+        if (div != null) {
+            imgElementList = div.select("img.mimg");
+        }
+        //校验图片元素是否为空
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(imgElementList), ErrorCode.OPERATION_ERROR, "获取图片元素失败");
+        //遍历元素，依次处理图片
+        int uploadCount = 0;
+        for (Element imgElement : imgElementList) {
+            String fileUrl = imgElement.attr("src");
+            if (StrUtil.isBlank(fileUrl)) {
+                log.info("当前链接为空，跳过:{}", fileUrl);
+                continue;
+            }
+            //处理图片的URL，过滤掉无效的URL
+            int questionMarkIndex = fileUrl.indexOf("?");
+            if (questionMarkIndex > -1) {
+                fileUrl = fileUrl.substring(0, questionMarkIndex);
+            }
+
+            //构造图片名称
+            String picName = String.format("%s_%s", namePrefix, uploadCount + 1);
+            PictureUploadRequest pictureUploadRequest = new PictureUploadRequest();
+            pictureUploadRequest.setFileUrl(fileUrl);
+            pictureUploadRequest.setPicName(picName);
+            try {
+                PictureVO pictureVO = this.uploadPicture(fileUrl, pictureUploadRequest, loginUser);
+                log.info("图片上传成功，图片ID：{}", pictureVO.getId());
+                uploadCount++;
+            } catch (Exception e) {
+                log.error("图片上传失败，图片URL：{}，异常信息：{}", fileUrl, e.getMessage());
+                continue;
+            }
+            if (uploadCount >= count) {
+                break;
+            }
+        }
+        return uploadCount;
     }
 
 }

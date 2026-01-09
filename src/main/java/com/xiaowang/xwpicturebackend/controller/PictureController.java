@@ -47,9 +47,9 @@ public class PictureController {
     /**
      * 上传图片
      *
-     * @param file              图片文件
+     * @param file                 图片文件
      * @param pictureUploadRequest 图片上传请求
-     * @param request           HttpServletRequest
+     * @param request              HttpServletRequest
      * @return 图片VO
      */
     //    @AutoCheck(mustRole = UserConstant.ADMIN_ROLE)
@@ -64,7 +64,7 @@ public class PictureController {
      * 上传图片url
      *
      * @param pictureUploadRequest 图片上传请求
-     * @param request           HttpServletRequest
+     * @param request              HttpServletRequest
      * @return 图片VO
      */
     @PostMapping("/upload/url")
@@ -227,4 +227,20 @@ public class PictureController {
         return ResultUtils.success(true);
     }
 
+
+    /**
+     * 批量抓取图片
+     *
+     * @param pictureUploadByBatchRequest 批量上传图片请求参数
+     * @param request                     HttpServletRequest对象
+     * @return 上传成功的图片数量
+     */
+    @PostMapping("/upload/batch")
+    @AutoCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Integer> uploadPictureByBatch(@RequestBody PictureUploadByBatchRequest pictureUploadByBatchRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureUploadByBatchRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+        User loginUser = userService.getLoginUser(request);
+        int uploadCount = pictureService.uploadPictureByBatch(pictureUploadByBatchRequest, loginUser);
+        return ResultUtils.success(uploadCount);
+    }
 }

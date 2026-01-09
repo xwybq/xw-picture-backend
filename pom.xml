@@ -39,6 +39,20 @@
             <artifactId>mybatis-plus-boot-starter</artifactId>
             <version>3.5.15</version>
         </dependency>
+        <!-- 删除原有旧版 Selenium 依赖，替换为以下内容 -->
+        <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <version>4.25.0</version>
+        </dependency>
+        <!-- 无需单独引入 selenium-chrome-driver，selenium-java 已包含，且版本统一 -->
+
+        <!-- 添加 WebDriverManager 自动管理驱动（避免手动下载/版本匹配问题） -->
+        <dependency>
+            <groupId>io.github.bonigarcia</groupId>
+            <artifactId>webdrivermanager</artifactId>
+            <version>5.6.0</version>
+        </dependency>
         <!-- jdk 11+ 引入可选模块 -->
         <dependency>
             <groupId>com.baomidou</groupId>
@@ -63,6 +77,12 @@
             <groupId>com.qcloud</groupId>
             <artifactId>cos_api</artifactId>
             <version>5.6.227</version>
+        </dependency>
+        <dependency>
+            <!-- jsoup HTML parser library @ https://jsoup.org/ -->
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.15.1</version>
         </dependency>
     </dependencies>
     <dependencyManagement>

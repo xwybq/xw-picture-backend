@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xiaowang.xwpicturebackend.model.dto.picture.PictureQueryRequest;
 import com.xiaowang.xwpicturebackend.model.dto.picture.PictureReviewRequest;
+import com.xiaowang.xwpicturebackend.model.dto.picture.PictureUploadByBatchRequest;
 import com.xiaowang.xwpicturebackend.model.dto.picture.PictureUploadRequest;
 import com.xiaowang.xwpicturebackend.model.dto.user.UserQueryRequest;
 import com.xiaowang.xwpicturebackend.model.entity.Picture;
@@ -26,7 +27,7 @@ public interface PictureService extends IService<Picture> {
     /**
      * 上传图片
      *
-     * @param inputSource        图片文件或URL
+     * @param inputSource          图片文件或URL
      * @param pictureUploadRequest 图片上传请求
      * @param loginUser            登录用户
      * @return 图片VO
@@ -80,9 +81,19 @@ public interface PictureService extends IService<Picture> {
     /**
      * 校验图片审核参数
      *
-     * @param picture 图片
+     * @param picture   图片
      * @param loginUser 登录用户
      */
-    void  fillReviewParams(Picture picture, User loginUser);
+    void fillReviewParams(Picture picture, User loginUser);
+
+
+    /**
+     * 批量上传图片
+     *
+     * @param pictureUploadByBatchRequest 图片批量上传请求
+     * @param loginUser                   登录用户
+     * @return 上传成功图片数量
+     */
+    Integer uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
 
 }
