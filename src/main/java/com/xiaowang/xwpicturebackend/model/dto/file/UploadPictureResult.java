@@ -19,6 +19,15 @@ public class UploadPictureResult implements Serializable {
      * 图片url
      */
     private String url;
+     /**
+     * 图片缩略图url
+     */
+    private String thumbnailUrl;
+
+    /**
+     * 原始文件名
+     */
+    private String originalFileName;
 
     /**
      * 图片名称

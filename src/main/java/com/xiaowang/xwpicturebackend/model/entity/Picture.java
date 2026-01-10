@@ -35,6 +35,13 @@ public class Picture implements Serializable {
     private String url;
 
     /**
+     * 图片缩略图url
+     */
+    //忽略非空就不更新的情况
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private String thumbnailUrl;
+
+    /**
      * 图片名称
      */
     private String name;
@@ -79,7 +86,7 @@ public class Picture implements Serializable {
      */
     private String picFormat;
 
-     /**
+    /**
      * 审核状态: 0-待审核, 1-审核通过, 2-审核拒绝
      */
     private Integer reviewStatus;

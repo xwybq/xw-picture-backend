@@ -14,6 +14,7 @@ public class PictureEditRequest implements Serializable {
      */
     private Long id;
 
+
     /**
      * 图片名称
      */
@@ -33,5 +34,4 @@ public class PictureEditRequest implements Serializable {
      * 图片标签 (逗号分隔，格式为JSON数组)
      */
     private List<String> tags;
-
 }

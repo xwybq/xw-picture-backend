@@ -76,12 +76,12 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         //校验
         //校验登录用户
         ThrowUtils.throwIf(loginUser == null, ErrorCode.NO_AUTH_ERROR);
-        //判断为新增还是删除
+        //判断为新增还是更新操作
         Long pictureId = null;
         if (pictureUploadRequest != null) {
             pictureId = pictureUploadRequest.getId();
         }
-        //如果是更新，还要判断图片是否存在
+        //如果是更新，还要判断图片是否存在，并且如果图片大小小于20K的话，就要把缩略图也清空
         if (pictureId != null) {
             Picture oldPicture = this.getById(pictureId);
             ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
@@ -102,7 +102,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Picture picture = new Picture();
         picture.setUserId(loginUser.getId());
         picture.setUrl(uploadPictureResult.getUrl());
+        //我再次上传判断的时候，如果图片小于20K，不是会直接把缩略图清空吗？
+        picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
         String picName = uploadPictureResult.getPicName();
+        //如果上传请求中包含图片名称，就用上传请求中的名称
         if (pictureUploadRequest != null && StrUtil.isNotBlank(pictureUploadRequest.getPicName())) {
             picName = pictureUploadRequest.getPicName();
         }
@@ -119,8 +122,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             picture.setId(pictureId);
             picture.setEditTime(new Date());
         }
+        //注意！！！saveOrUpdate方法会根据id是否存在来判断是新增还是更新操作，而且如果字段为null，他会自动忽略这个字段，不会更新为null
         boolean result = this.saveOrUpdate(picture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片上传失败，数据库操作异常");
+        log.info("图片对象为{}", picture);
+        log.info("转换成图片VO为{}", PictureVO.objToVo(picture));
         //返回VO
         return PictureVO.objToVo(picture);
     }

@@ -66,3 +66,7 @@ alter table picture
 
 -- 图片审核状态索引
 create index idx_reviewStatus on picture (reviewStatus);
+
+
+alter table picture
+    add column thumbnailUrl varchar(512) null comment '图片缩略图url';
