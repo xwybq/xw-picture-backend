@@ -6,6 +6,7 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.util.URLUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -38,9 +39,11 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -435,27 +438,48 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     }
 
     /**
-     * 清除图片文件
+     * 清理图片文件（删除COS中对应的图片和缩略图）
      *
-     * @param oldPicture 旧图片
+     * @param oldPicture 要删除的图片对象
      */
-    @Async
     @Override
+    @Async
     public void clearPictureFile(Picture oldPicture) {
-        //校验参数
+        // 校验参数
         ThrowUtils.throwIf(ObjectUtil.isEmpty(oldPicture), ErrorCode.PARAMS_ERROR, "图片为空");
         String url = oldPicture.getUrl();
-        //判断图片是否被多条记录引用
+        ThrowUtils.throwIf(StrUtil.isBlank(url), ErrorCode.PARAMS_ERROR, "图片URL为空");
+
+        // 判断图片是否被多条记录引用
         long count = this.lambdaQuery().eq(Picture::getUrl, url).count();
         ThrowUtils.throwIf(count > 1, ErrorCode.OPERATION_ERROR, "图片被多条记录引用，不能删除");
-        //删除COS中的图片
-        cosManager.deleteObject(url);
+
+        // 1. 解析图片URL为COS的key并删除
+        String pictureKey = parseCosUrlToKey(url);
+        cosManager.deleteObject(pictureKey);
+
+        // 2. 解析缩略图URL为COS的key并删除（如果有）
         String thumbnailUrl = oldPicture.getThumbnailUrl();
+        String thumbnailKey = "";
         if (StrUtil.isNotBlank(thumbnailUrl)) {
-            cosManager.deleteObject(thumbnailUrl);
+            thumbnailKey = parseCosUrlToKey(thumbnailUrl);
+            cosManager.deleteObject(thumbnailKey);
         }
+
+        log.info("图片文件删除成功，图片KEY：{}，缩略图KEY：{}", pictureKey, thumbnailKey);
     }
 
+    /**
+     * 工具方法：从COS完整URL中解析出对象的key
+     * 示例URL：https://xw-1382515737.cos.ap-guangzhou.myqcloud.com/public/2006966019971723266/2026-01-10_Krh0ykvrBFH32MMu.webp
+     * 解析后key：public/2006966019971723266/2026-01-10_Krh0ykvrBFH32MMu.webp
+     *
+     * @param cosUrl COS对象的完整URL
+     * @return COS对象的key
+     */
+    private String parseCosUrlToKey(String cosUrl) {
+        return cosUrl.substring(cosUrl.indexOf(".com/") + 5);
+    }
 }
 
 
