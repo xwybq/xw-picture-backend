@@ -96,4 +96,16 @@ public class CosManager {
         return cosClient.putObject(putObjectRequest);
     }
 
+
+    /**
+     * 删除 COS 中的对象
+     *
+     * @param key 对象在 COS 中的键
+     * @throws CosClientException 客户端异常
+     */
+    public void deleteObject(String key) throws CosClientException {
+        cosClient.deleteObject(clientConfig.getBucket(), key);
+    }
+
+
 }

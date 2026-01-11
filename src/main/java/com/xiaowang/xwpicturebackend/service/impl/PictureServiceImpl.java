@@ -7,11 +7,13 @@ import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xiaowang.xwpicturebackend.exception.BusinessException;
 import com.xiaowang.xwpicturebackend.exception.ErrorCode;
 import com.xiaowang.xwpicturebackend.exception.ThrowUtils;
+import com.xiaowang.xwpicturebackend.manager.CosManager;
 import com.xiaowang.xwpicturebackend.manager.FileManager;
 import com.xiaowang.xwpicturebackend.manager.upload.FilePictureUpload;
 import com.xiaowang.xwpicturebackend.manager.upload.PictureUploadTemplate;
@@ -34,6 +36,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
@@ -55,12 +58,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     private final UrlPictureUpload urlPictureUpload;
     private final FilePictureUpload filePictureUpload;
     private final UserService userService;
+    private final CosManager cosManager;
 
 
-    public PictureServiceImpl(UrlPictureUpload urlPictureUpload, FilePictureUpload filePictureUpload, UserService userService) {
+    public PictureServiceImpl(UrlPictureUpload urlPictureUpload, FilePictureUpload filePictureUpload, UserService userService, CosManager cosManager) {
         this.urlPictureUpload = urlPictureUpload;
         this.filePictureUpload = filePictureUpload;
         this.userService = userService;
+        this.cosManager = cosManager;
     }
 
     /**
@@ -81,7 +86,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (pictureUploadRequest != null) {
             pictureId = pictureUploadRequest.getId();
         }
-        //如果是更新，还要判断图片是否存在，并且如果图片大小小于20K的话，就要把缩略图也清空
+        //如果是更新，还要判断图片是否存在
         if (pictureId != null) {
             Picture oldPicture = this.getById(pictureId);
             ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
@@ -89,6 +94,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             if (!oldPicture.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
                 throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
             }
+            //清除旧图片在COS中的文件
+            this.clearPictureFile(oldPicture);
         }
         //上传
         String uploadPrefix = String.format("public/%s", loginUser.getId());
@@ -425,6 +432,28 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
         }
         return uploadCount;
+    }
+
+    /**
+     * 清除图片文件
+     *
+     * @param oldPicture 旧图片
+     */
+    @Async
+    @Override
+    public void clearPictureFile(Picture oldPicture) {
+        //校验参数
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(oldPicture), ErrorCode.PARAMS_ERROR, "图片为空");
+        String url = oldPicture.getUrl();
+        //判断图片是否被多条记录引用
+        long count = this.lambdaQuery().eq(Picture::getUrl, url).count();
+        ThrowUtils.throwIf(count > 1, ErrorCode.OPERATION_ERROR, "图片被多条记录引用，不能删除");
+        //删除COS中的图片
+        cosManager.deleteObject(url);
+        String thumbnailUrl = oldPicture.getThumbnailUrl();
+        if (StrUtil.isNotBlank(thumbnailUrl)) {
+            cosManager.deleteObject(thumbnailUrl);
+        }
     }
 
 }
