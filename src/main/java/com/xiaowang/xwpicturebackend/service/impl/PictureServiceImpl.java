@@ -3,6 +3,7 @@ package com.xiaowang.xwpicturebackend.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.net.URLDecoder;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
@@ -44,7 +45,10 @@ import org.springframework.util.ObjectUtils;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -70,6 +74,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         this.userService = userService;
         this.cosManager = cosManager;
     }
+
+    // 正则匹配跳转链接中的mediaurl参数（原图URL）
+    private static final Pattern MEDIA_URL_PATTERN = Pattern.compile("mediaurl=([^&]+)");
+    private static final String BING_PREFIX = "https://www.bing.com";
 
     /**
      * 上传图片
@@ -362,8 +370,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
+
     /**
-     * 批量上传图片
+     * 批量上传图片（修改后：抓取原图URL上传）
      *
      * @param pictureUploadByBatchRequest 图片批量上传请求
      * @param loginUser                   登录用户
@@ -371,7 +380,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
      */
     @Override
     public Integer uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser) {
-        //1、校验参数
+        // 1、校验参数（完全保留原有逻辑）
         final Integer DEFAULT_MAX_COUNT = 30;
         String searchText = pictureUploadByBatchRequest.getSearchText();
         Integer count = pictureUploadByBatchRequest.getCount();
@@ -382,59 +391,87 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (StrUtil.isBlank(namePrefix)) {
             namePrefix = searchText;
         }
-        //2、发送请求，抓取内容
+
+        // 2、发送请求，抓取图片列表页（保留原有逻辑，仅修改后续解析部分）
         final String DEFAULT_PICTURE_FETCH_URL = "https://cn.bing.com/images/async?q=%s&mmasync=1";
         String fetchUrl = String.format(DEFAULT_PICTURE_FETCH_URL, searchText);
         Document document;
         try {
             document = Jsoup.connect(fetchUrl).get();
         } catch (IOException e) {
-            log.error(String.format("图片批量上传失败，搜索文本：%s，抓取数量：%d，异常信息：%s", searchText, count, e.getMessage()));
+            log.error("图片批量上传失败，搜索文本：{}，抓取数量：{}，异常信息：{}", searchText, count, e.getMessage());
             throw new BusinessException(ErrorCode.PARAMS_ERROR, e.getMessage());
         }
-        //3、处理响应
-        Element div = document.getElementsByClass("dgControl").first();
-        if (ObjectUtil.isEmpty(div)) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取元素失败");
-        }
-        Elements imgElementList = null;
-        if (div != null) {
-            imgElementList = div.select("img.mimg");
-        }
-        //校验图片元素是否为空
-        ThrowUtils.throwIf(ObjectUtil.isEmpty(imgElementList), ErrorCode.OPERATION_ERROR, "获取图片元素失败");
-        //遍历元素，依次处理图片
+
+        // 3、核心修改：获取图片跳转链接（替代原来的img.mimg）
+        Elements jumpLinkElements = document.select("div.imgpt > a");
+        // 校验跳转链接是否为空（替换原来的imgElementList校验）
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(jumpLinkElements), ErrorCode.OPERATION_ERROR, "获取图片跳转链接失败");
+
+        // 4、遍历跳转链接，解析原图URL并上传（替换原来的imgElementList遍历）
         int uploadCount = 0;
-        for (Element imgElement : imgElementList) {
-            String fileUrl = imgElement.attr("src");
-            if (StrUtil.isBlank(fileUrl)) {
-                log.info("当前链接为空，跳过:{}", fileUrl);
-                continue;
-            }
-            //处理图片的URL，过滤掉无效的URL
-            int questionMarkIndex = fileUrl.indexOf("?");
-            if (questionMarkIndex > -1) {
-                fileUrl = fileUrl.substring(0, questionMarkIndex);
+        for (Element aElement : jumpLinkElements) {
+            // 控制上传数量，达到目标后停止
+            if (uploadCount >= count) {
+                break;
             }
 
-            //构造图片名称
+            // 提取跳转链接并拼接完整URL
+            String relativeJumpUrl = aElement.attr("href");
+            if (StrUtil.isBlank(relativeJumpUrl)) {
+                log.info("当前跳转链接为空，跳过");
+                continue;
+            }
+            String fullJumpUrl = BING_PREFIX + relativeJumpUrl;
+
+            // 解析mediaurl参数，获取原图URL
+            String fileUrl = parseMediaUrl(fullJumpUrl);
+            if (StrUtil.isBlank(fileUrl)) {
+                log.info("跳转链接 {} 未解析到原图URL，跳过", fullJumpUrl);
+                continue;
+            }
+
+//            // 处理图片URL（保留原有过滤逻辑，防止URL带参数）
+//            int questionMarkIndex = fileUrl.indexOf("?");
+//            if (questionMarkIndex > -1) {
+//                fileUrl = fileUrl.substring(0, questionMarkIndex);
+//            }
+
+            // 构造图片名称（保留原有逻辑）
             String picName = String.format("%s_%s", namePrefix, uploadCount + 1);
             PictureUploadRequest pictureUploadRequest = new PictureUploadRequest();
             pictureUploadRequest.setFileUrl(fileUrl);
             pictureUploadRequest.setPicName(picName);
+
+            // 上传图片（保留原有上传逻辑）
             try {
                 PictureVO pictureVO = this.uploadPicture(fileUrl, pictureUploadRequest, loginUser);
-                log.info("图片上传成功，图片ID：{}", pictureVO.getId());
+                log.info("图片上传成功，图片ID：{}，原图URL：{}", pictureVO.getId(), fileUrl);
                 uploadCount++;
             } catch (Exception e) {
-                log.error("图片上传失败，图片URL：{}，异常信息：{}", fileUrl, e.getMessage());
-                continue;
-            }
-            if (uploadCount >= count) {
-                break;
+                log.error("图片上传失败，原图URL：{}，异常信息：{}", fileUrl, e.getMessage());
             }
         }
+
         return uploadCount;
+    }
+
+    /**
+     * 工具方法：从跳转链接中解析mediaurl参数（URL解码后得到原图URL）
+     */
+    private String parseMediaUrl(String jumpUrl) {
+        Matcher matcher = MEDIA_URL_PATTERN.matcher(jumpUrl);
+        if (matcher.find()) {
+            // 提取参数并URL解码（必应对参数做了UTF-8编码）
+            String encodedUrl = matcher.group(1);
+            try {
+                return URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                log.error("URL解码失败，编码URL：{}，异常信息：{}", encodedUrl, e.getMessage());
+                return null;
+            }
+        }
+        return null;
     }
 
     /**

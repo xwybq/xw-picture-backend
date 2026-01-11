@@ -2,20 +2,19 @@ package com.xiaowang.xwpicturebackend.manager.upload;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.HttpResponse;
-import cn.hutool.http.HttpStatus;
-import cn.hutool.http.HttpUtil;
-import cn.hutool.http.Method;
+import cn.hutool.http.*;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.xiaowang.xwpicturebackend.config.CosClientConfig;
 import com.xiaowang.xwpicturebackend.exception.BusinessException;
 import com.xiaowang.xwpicturebackend.exception.ErrorCode;
 import com.xiaowang.xwpicturebackend.exception.ThrowUtils;
 import com.xiaowang.xwpicturebackend.manager.CosManager;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.SessionAttributes;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
@@ -25,16 +24,64 @@ import java.util.List;
  * URL图片上传模板
  */
 @Service
+@Slf4j
 public class UrlPictureUpload extends PictureUploadTemplate {
     public UrlPictureUpload(CosManager cosManager, CosClientConfig cosClientConfig) {
         super(cosManager, cosClientConfig);
     }
 
-    @Override
     protected void processFile(Object inputSource, File tempFile) {
         String fileUrl = (String) inputSource;
-        //下载文件到临时目录
-        HttpUtil.downloadFile(fileUrl, tempFile);
+        // 定义允许的重试次数
+        int retryTimes = 1;
+        boolean downloadSuccess = false;
+        // TODO 这里要解决一下反爬的问题，现在直接用浏览器的 User-Agent 会被反爬识别 等我足够强大了再来搞吧
+        for (int i = 0; i <= retryTimes; i++) {
+            try (HttpResponse response = HttpRequest.get(fileUrl)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36")
+                    .header("Referer", getRefererByDomain(fileUrl)) // 按域名适配Referer
+                    .header("Accept", "image/webp,image/png,image/jpeg,image/gif,*/*;q=0.8")
+                    .header("Accept-Encoding", "gzip, deflate, br") // 模拟浏览器编码
+                    .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8") // 模拟语言
+                    .timeout(10000)
+                    .setFollowRedirects(true) // 跟随302重定向
+                    .execute()) {
+
+                int statusCode = response.getStatus();
+                // 只处理200状态码，其他直接标记失败
+                if (statusCode == 200) {
+                    FileUtil.writeBytes(response.bodyBytes(), tempFile);
+                    downloadSuccess = true;
+                    break;
+                } else {
+                    log.warn("下载图片失败（状态码{}），URL：{}，重试次数：{}", statusCode, fileUrl, i);
+                    // 重试前休眠500ms，降低请求频率
+                    Thread.sleep(500);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("下载重试休眠被中断，URL：{}", fileUrl);
+                break;
+            }
+        }
+
+        // 下载失败直接抛异常，让上层跳过该图片
+        if (!downloadSuccess) {
+            throw new RuntimeException("文件下载失败（多次重试仍失败），URL：" + fileUrl);
+        }
+    }
+
+    /**
+     * 按域名适配Referer（尝试绕过防盗链）
+     */
+    private String getRefererByDomain(String url) {
+        if (url.contains("huanqiucdn.cn")) {
+            return "https://www.huanqiu.com/"; // 适配环球网防盗链
+        } else if (url.contains("myqcloud.com")) {
+            return "https://cn.bing.com/"; // 适配腾讯云图片防盗链
+        } else {
+            return "https://cn.bing.com/images/"; // 默认Referer
+        }
     }
 
     @Override
