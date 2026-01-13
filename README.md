@@ -155,7 +155,7 @@ spring:
 3. 编译并启动: `mvn spring-boot:run`。
 4. 访问接口文档: `http://localhost:8123/api/doc.html` （若集成 Swagger/Knife4j）。
 
-#### 前端启动 (xw-picture-front)
+#### 前端启动 (xw-picture-frontend)
 
 1. 进入前端目录: `cd xw-picture-frontend`。
 2. 安装依赖: `npm install`。
