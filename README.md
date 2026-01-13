@@ -112,6 +112,7 @@ XW-智能协同云图库平台是一款基于 **Vue 3 + Spring Boot + COS + WebS
 ### 开发环境要求
 
 - JDK 11+
+- Spring Boot 2.7.x
 - MySQL 8.0+（支持 utf8mb4 字符集）
 - Redis 6.0+（分布式缓存依赖）
 - Node.js 16+（前端运行环境）
