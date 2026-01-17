@@ -5,32 +5,33 @@
 <mapper namespace="com.xiaowang.xwpicturebackend.mapper.PictureMapper">
 
     <resultMap id="BaseResultMap" type="com.xiaowang.xwpicturebackend.model.entity.Picture">
-            <id property="id" column="id" />
-            <result property="userId" column="userId" />
-            <result property="url" column="url" />
-            <result property="thumbnailUrl" column="thumbnailUrl" />
-            <result property="name" column="name" />
-            <result property="introduction" column="introduction" />
-            <result property="category" column="category" />
-            <result property="tags" column="tags" />
-            <result property="picSize" column="picSize" />
-            <result property="picHeight" column="picHeight" />
-            <result property="picWidth" column="picWidth" />
-            <result property="picScale" column="picScale" />
-            <result property="picFormat" column="picFormat" />
-            <result property="reviewStatus" column="reviewStatus" />
-            <result property="reviewMessage" column="reviewMessage" />
-            <result property="reviewId" column="reviewId" />
-            <result property="reviewTime" column="reviewTime" />
-            <result property="editTime" column="editTime" />
-            <result property="createTime" column="createTime" />
-            <result property="updateTime" column="updateTime" />
-            <result property="isDelete" column="isDelete" />
+        <id property="id" column="id"/>
+        <result property="userId" column="userId"/>
+        <result property="spaceId" column="spaceId"/>
+        <result property="url" column="url"/>
+        <result property="thumbnailUrl" column="thumbnailUrl"/>
+        <result property="name" column="name"/>
+        <result property="introduction" column="introduction"/>
+        <result property="category" column="category"/>
+        <result property="tags" column="tags"/>
+        <result property="picSize" column="picSize"/>
+        <result property="picHeight" column="picHeight"/>
+        <result property="picWidth" column="picWidth"/>
+        <result property="picScale" column="picScale"/>
+        <result property="picFormat" column="picFormat"/>
+        <result property="reviewStatus" column="reviewStatus"/>
+        <result property="reviewMessage" column="reviewMessage"/>
+        <result property="reviewId" column="reviewId"/>
+        <result property="reviewTime" column="reviewTime"/>
+        <result property="editTime" column="editTime"/>
+        <result property="createTime" column="createTime"/>
+        <result property="updateTime" column="updateTime"/>
+        <result property="isDelete" column="isDelete"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,userId,url,thumbnailUrl,name,introduction,category,
+        id,userId,spaceId,url,thumbnailUrl,name,introduction,category,
         tags,picSize,picHeight,picWidth,picScale,
-        picFormat,reviewStatus,reviewMessage,reviewId,reviewTime,editTime,createTime,updateTime,isDelete
+        picFormat,reviewStatus,reviewMessage,reviewId,reviewTime,editTime,createTime,updateTime,isDelete,spaceId
     </sql>
 </mapper>

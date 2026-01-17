@@ -2,10 +2,7 @@ package com.xiaowang.xwpicturebackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.xiaowang.xwpicturebackend.model.dto.picture.PictureQueryRequest;
-import com.xiaowang.xwpicturebackend.model.dto.picture.PictureReviewRequest;
-import com.xiaowang.xwpicturebackend.model.dto.picture.PictureUploadByBatchRequest;
-import com.xiaowang.xwpicturebackend.model.dto.picture.PictureUploadRequest;
+import com.xiaowang.xwpicturebackend.model.dto.picture.*;
 import com.xiaowang.xwpicturebackend.model.dto.user.UserQueryRequest;
 import com.xiaowang.xwpicturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -97,12 +94,35 @@ public interface PictureService extends IService<Picture> {
     Integer uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
 
 
-
     /**
      * 清除图片文件
      *
      * @param oldPicture 旧图片
      */
     void clearPictureFile(Picture oldPicture);
+
+    /**
+     * 删除图片（逻辑删除，更新数据库状态）
+     *
+     * @param pictureId 要删除的图片ID
+     * @param loginUser 当前登录用户
+     */
+    void deletePicture(long pictureId, User loginUser);
+
+    /**
+     * 更新图片信息（校验权限后更新数据库）
+     *
+     * @param pictureEditRequest 包含更新信息的请求对象
+     * @param loginUser          当前登录用户
+     */
+    void editPicture(PictureEditRequest pictureEditRequest, User loginUser);
+
+    /**
+     * 检验空间图片的权限（删除/更新时调用）
+     *
+     * @param picture   图片
+     * @param loginUser 登录用户
+     */
+    void checkPictureAuth(Picture picture, User loginUser);
 
 }

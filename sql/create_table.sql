@@ -70,3 +70,30 @@ create index idx_reviewStatus on picture (reviewStatus);
 
 alter table picture
     add column thumbnailUrl varchar(512) null comment '图片缩略图url';
+
+
+-- 空间表
+create table if not exists space
+(
+    id         bigint auto_increment comment 'id' primary key,
+    userId     bigint                             not null comment '创建用户id',
+    spaceName  varchar(128)                       null comment '空间名称',
+    spaceLevel tinyint  default 0                 not null comment '空间等级: 0-普通空间, 1-专业空间 2-旗舰空间',
+    maxSize    bigint   default 0                 null comment '空间图片的最大大小 (字节)',
+    maxCount   bigint   default 0                 null comment '空间图片的最大数量',
+    totalSize  bigint   default 0                 null comment '当前空间图片的总大小 (字节)',
+    totalCount bigint   default 0                 null comment '当前空间图片的总数量',
+    editTime   datetime default CURRENT_TIMESTAMP not null comment '编辑时间',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete   tinyint  default 0                 not null comment '是否删除',
+    index idx_userId (userId),         -- 根据用户id查询空间
+    index idx_spaceLevel (spaceLevel), -- 根据空间等级查询空间
+    index idx_spaceName (spaceName)    -- 根据空间名称查询空间
+) comment '空间' collate = 'utf8mb4_unicode_ci';
+
+
+alter table picture
+    add column spaceId bigint null comment '空间id(为空则为公共空间)';
+
+create index idx_spaceId on picture (spaceId);
